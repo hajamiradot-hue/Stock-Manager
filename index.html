@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StockManager">
+<title>StockManager</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a2f42;
+    --accent: #22c55e;
+    --accent-dim: #16a34a22;
+    --danger: #ef4444;
+    --danger-dim: #ef444422;
+    --warn: #f59e0b;
+    --warn-dim: #f59e0b22;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --muted2: #475569;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --r: 14px;
+    --r-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-display); overflow: hidden; }
+
+  .app { display: flex; flex-direction: column; height: 100dvh; height: 100vh; }
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .app-name { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .app-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 1px; }
+
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab {
+    flex: 1; padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; transition: all 0.2s; letter-spacing: 0.3px; font-family: var(--font-display);
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab svg { display: block; margin: 0 auto 4px; }
+
+  .content { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom, 16px); }
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* SEARCH BAR */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    color: var(--text); font-family: var(--font-display); font-size: 14px; font-weight: 600;
+    padding: 11px 40px 11px 38px; outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); font-weight: 400; }
+  .search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: var(--muted2); border: none; border-radius: 50%; width: 18px; height: 18px;
+    color: var(--bg); cursor: pointer; font-size: 11px; display: none; align-items: center; justify-content: center;
+    font-weight: 700; line-height: 1;
+  }
+  .search-clear.visible { display: flex; }
+
+  /* DATE FILTER */
+  .filter-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 14px 16px; margin-bottom: 14px;
+  }
+  .filter-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .filter-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--font-mono); display: flex; align-items: center; gap: 8px; }
+  .filter-badge { background: var(--accent-dim); color: var(--accent); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); }
+  .filter-chevron { color: var(--muted); transition: transform 0.2s; }
+  .filter-chevron.open { transform: rotate(180deg); }
+  .filter-body { overflow: hidden; max-height: 0; transition: max-height 0.25s ease; }
+  .filter-body.open { max-height: 200px; }
+  .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .filter-group { display: flex; flex-direction: column; gap: 5px; }
+  .filter-label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.6px; }
+  .filter-date {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text); font-family: var(--font-mono); font-size: 13px;
+    padding: 9px 10px; outline: none; -webkit-appearance: none; width: 100%;
+    transition: border-color 0.15s;
+  }
+  .filter-date:focus { border-color: var(--accent); }
+  .filter-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-filter-reset {
+    width: 100%; background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--muted); font-family: var(--font-display); font-size: 13px; font-weight: 600;
+    padding: 10px 16px; cursor: pointer;
+  }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; }
+  .metric-label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .metric-val { font-size: 28px; font-weight: 800; line-height: 1; }
+  .metric-val.green { color: var(--accent); }
+  .metric-val.red { color: var(--danger); }
+  .metric-val.amber { color: var(--warn); }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--font-mono); }
+  .sort-row { display: flex; gap: 6px; }
+  .sort-pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; font-family: var(--font-mono); transition: all 0.15s;
+  }
+  .sort-pill.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+  /* RESULTS COUNT */
+  .results-info { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 10px; }
+  .results-info span { color: var(--accent); }
+
+  /* ENTRY CARDS */
+  .entry-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 14px 16px; margin-bottom: 10px; animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .entry-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .entry-product { font-size: 15px; font-weight: 700; }
+  .entry-product mark { background: var(--accent-dim); color: var(--accent); border-radius: 3px; padding: 0 2px; }
+  .entry-date { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+  .entry-badges { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-family: var(--font-mono); font-weight: 500;
+    padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .badge-in { background: var(--accent-dim); color: var(--accent); }
+  .badge-out { background: var(--danger-dim); color: var(--danger); }
+  .badge-stock-ok { background: var(--accent-dim); color: var(--accent); }
+  .badge-stock-low { background: var(--warn-dim); color: var(--warn); }
+  .badge-stock-zero { background: var(--danger-dim); color: var(--danger); }
+  .entry-del { background: none; border: none; color: var(--muted2); cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.15s; flex-shrink: 0; }
+  .entry-del:active { color: var(--danger); }
+  .entry-stock-row { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .entry-stock-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* FORM */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 16px; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: block; }
+  .field-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text); font-family: var(--font-display); font-size: 15px; font-weight: 600;
+    padding: 12px 14px; outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .field-input:focus { border-color: var(--accent); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn-submit {
+    width: 100%; background: var(--accent); border: none; border-radius: var(--r-sm);
+    color: #0a1a0f; font-family: var(--font-display); font-size: 15px; font-weight: 800;
+    padding: 15px; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.3px; margin-top: 16px;
+  }
+  .btn-submit:active { opacity: 0.8; transform: scale(0.99); }
+
+  /* STOCKS PAGE */
+  .stock-search-wrap { position: relative; margin-bottom: 14px; }
+  .product-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .product-name { font-size: 15px; font-weight: 700; }
+  .product-name mark { background: var(--accent-dim); color: var(--accent); border-radius: 3px; padding: 0 2px; }
+  .product-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 3px; }
+  .product-stock-num { font-size: 24px; font-weight: 800; text-align: right; }
+  .product-stock-unit { font-size: 11px; color: var(--muted); font-family: var(--font-mono); text-align: right; margin-top: 2px; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+  .empty-text { font-size: 14px; font-family: var(--font-mono); }
+
+  /* EXPORT BUTTON */
+  .btn-export {
+    display: flex; align-items: center; gap: 7px;
+    background: #1a2e1a; border: 1px solid #22c55e55; border-radius: var(--r-sm);
+    color: var(--accent); font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+    padding: 7px 14px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-export:active { background: var(--accent-dim); }
+  .export-bar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+
+  /* INSTALL BANNER */
+  .install-banner {
+    background: var(--accent-dim); border: 1px solid var(--accent); border-radius: var(--r);
+    padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .install-text { flex: 1; font-size: 13px; color: var(--accent); line-height: 1.4; }
+  .install-btn { background: var(--accent); border: none; border-radius: var(--r-sm); color: #0a1a0f; font-family: var(--font-display); font-weight: 800; font-size: 12px; padding: 8px 14px; cursor: pointer; flex-shrink: 0; }
+  .install-close { background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px; font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1a0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div>
+        <div class="app-name">StockManager</div>
+        <div class="app-sub">Gestion quotidienne</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('dashboard')" id="tab-dashboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Tableau
+    </button>
+    <button class="tab" onclick="showPage('add')" id="tab-add">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Ajouter
+    </button>
+    <button class="tab" onclick="showPage('stocks')" id="tab-stocks">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Stocks
+    </button>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+
+      <div id="install-banner" class="install-banner" style="display:none;">
+        <div class="install-text">📲 Installez l'app sur votre écran d'accueil pour l'utiliser hors ligne.</div>
+        <button class="install-btn" onclick="installPWA()">Installer</button>
+        <button class="install-close" onclick="document.getElementById('install-banner').style.display='none'">✕</button>
+      </div>
+
+      <!-- SEARCH BAR (dashboard) -->
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" type="text" id="dash-search" placeholder="Rechercher un produit…" oninput="onDashSearch(this.value)">
+        <button class="search-clear" id="dash-search-clear" onclick="clearDashSearch()">✕</button>
+      </div>
+
+      <!-- DATE FILTER -->
+      <div class="filter-card" id="filter-card">
+        <div class="filter-header" onclick="toggleFilter()">
+          <div class="filter-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Filtrer par date
+            <span class="filter-badge" id="filter-badge" style="display:none;">actif</span>
+          </div>
+          <svg class="filter-chevron" id="filter-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="filter-body" id="filter-body">
+          <div class="filter-row">
+            <div class="filter-group">
+              <span class="filter-label">Du</span>
+              <input type="date" class="filter-date" id="filter-from" oninput="onFilterChange()">
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">Au</span>
+              <input type="date" class="filter-date" id="filter-to" oninput="onFilterChange()">
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-filter-reset" onclick="resetFilter()">Réinitialiser le filtre</button>
+          </div>
+          <div id="filter-summary" style="display:none; margin-top:10px; font-size:12px; font-family:var(--font-mono); color:var(--accent); background:var(--accent-dim); border-radius:var(--r-sm); padding:8px 12px; line-height:1.5;"></div>
+        </div>
+      </div>
+
+      <div class="metrics" id="metrics"></div>
+
+      <div class="section-header">
+        <span class="section-title">Mouvements</span>
+        <div class="sort-row">
+          <button class="sort-pill active" id="pill-desc" onclick="setSort('desc')">↓ Récent</button>
+          <button class="sort-pill" id="pill-asc" onclick="setSort('asc')">↑ Ancien</button>
+        </div>
+      </div>
+      <div class="export-bar">
+        <button class="btn-export" onclick="exportMouvements()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exporter Excel
+        </button>
+      </div>
+      <div class="results-info" id="results-info"></div>
+      <div id="entries-list"></div>
+    </div>
+
+    <!-- ADD PAGE -->
+    <div class="page" id="page-add">
+      <div class="form-card">
+        <div class="section-title" style="margin-bottom:18px;">Nouveau mouvement</div>
+        <div class="field">
+          <label class="field-label">Produit</label>
+          <select class="field-input" id="inp-product">
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Date</label>
+          <input type="date" class="field-input" id="inp-date">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">↑ Entrées</label>
+            <input type="number" class="field-input" id="inp-in" min="0" value="0" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label">↓ Sorties</label>
+            <input type="number" class="field-input" id="inp-out" min="0" value="0" inputmode="numeric">
+          </div>
+        </div>
+        <button class="btn-submit" onclick="addEntry()">＋ Enregistrer</button>
+      </div>
+
+      <div class="section-header" style="margin-top:8px;">
+        <span class="section-title">Produits</span>
+        <button class="sort-pill" onclick="promptNewProduct()" style="border-color:var(--accent);color:var(--accent);">+ Nouveau</button>
+      </div>
+      <div id="product-list-manage"></div>
+    </div>
+
+    <!-- STOCKS PAGE -->
+    <div class="page" id="page-stocks">
+      <!-- SEARCH BAR (stocks) -->
+      <div class="search-wrap" style="margin-bottom:14px;">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" type="text" id="stock-search" placeholder="Rechercher un produit…" oninput="onStockSearch(this.value)">
+        <button class="search-clear" id="stock-search-clear" onclick="clearStockSearch()">✕</button>
+      </div>
+      <div class="section-header">
+        <span class="section-title">Stock par produit</span>
+        <div class="sort-row">
+          <button class="sort-pill active" id="spill-az" onclick="setStockSort('az')">A→Z</button>
+          <button class="sort-pill" id="spill-stock" onclick="setStockSort('stock')">↓ Stock</button>
+        </div>
+      </div>
+      <div class="export-bar">
+        <button class="btn-export" onclick="exportStocks()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exporter Excel
+        </button>
+      </div>
+      <div class="results-info" id="stock-results-info"></div>
+      <div id="stocks-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let state = JSON.parse(localStorage.getItem('stockmanager') || 'null') || {
+  products: ['Riz (kg)', 'Farine (kg)', 'Huile (L)', 'Sucre (kg)', 'Café (kg)', 'Sel (kg)'],
+  entries: [
+    { id:1, product:'Riz (kg)', date:'2025-05-20', in:50, out:12 },
+    { id:2, product:'Farine (kg)', date:'2025-05-21', in:30, out:8 },
+    { id:3, product:'Huile (L)', date:'2025-05-22', in:20, out:5 },
+    { id:4, product:'Riz (kg)', date:'2025-05-23', in:0, out:15 },
+    { id:5, product:'Sucre (kg)', date:'2025-05-24', in:25, out:3 },
+  ],
+  nextId: 6
+};
+
+let sortDir = 'desc';
+let stockSort = 'az';
+let dashSearch = '';
+let stockSearch = '';
+let filterFrom = '';
+let filterTo = '';
+let filterOpen = false;
+
+function save() { localStorage.setItem('stockmanager', JSON.stringify(state)); }
+
+// ─── COMPUTED ────────────────────────────────────────────
+function getStocks() {
+  const map = {};
+  state.entries.forEach(e => { map[e.product] = (map[e.product] || 0) + e.in - e.out; });
+  return map;
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return text.replace(re, '<mark>$1</mark>');
+}
+
+// ─── FILTER LOGIC ────────────────────────────────────────
+function getFilteredEntries() {
+  return state.entries.filter(e => {
+    const matchSearch = !dashSearch || e.product.toLowerCase().includes(dashSearch.toLowerCase());
+    const matchFrom = !filterFrom || e.date >= filterFrom;
+    const matchTo = !filterTo || e.date <= filterTo;
+    return matchSearch && matchFrom && matchTo;
+  });
+}
+
+// ─── RENDER ──────────────────────────────────────────────
+function render() {
+  renderMetrics();
+  renderEntries();
+  renderStocks();
+  renderProductManage();
+  renderProductSelect();
+}
+
+function renderMetrics() {
+  const stocks = getStocks();
+  const products = [...new Set(state.entries.map(e => e.product))];
+  const total = Object.values(stocks).reduce((a, b) => a + b, 0);
+  const lowCount = Object.values(stocks).filter(v => v > 0 && v < 10).length;
+  const rupture = Object.values(stocks).filter(v => v <= 0).length;
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Produits</div><div class="metric-val green">${products.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Stock total</div><div class="metric-val ${total < 20 ? 'amber' : 'green'}">${total}</div></div>
+    <div class="metric-card"><div class="metric-label">Stock faible</div><div class="metric-val ${lowCount > 0 ? 'amber' : ''}">${lowCount}</div></div>
+    <div class="metric-card"><div class="metric-label">Ruptures</div><div class="metric-val ${rupture > 0 ? 'red' : ''}">${rupture}</div></div>
+  `;
+}
+
+function fmtDate(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function renderEntries() {
+  const filtered = getFilteredEntries();
+  const sorted = filtered.sort((a, b) =>
+    sortDir === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
+  );
+  const stocks = getStocks();
+  const el = document.getElementById('entries-list');
+  const info = document.getElementById('results-info');
+
+  const total = state.entries.length;
+  const shown = sorted.length;
+  const isFiltered = dashSearch || filterFrom || filterTo;
+  info.innerHTML = isFiltered
+    ? `<span>${shown}</span> résultat${shown !== 1 ? 's' : ''} sur ${total} mouvement${total !== 1 ? 's' : ''}`
+    : `${total} mouvement${total !== 1 ? 's' : ''}`;
+
+  if (sorted.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">${isFiltered ? 'Aucun résultat' : 'Aucun mouvement'}</div></div>`;
+    return;
+  }
+  el.innerHTML = sorted.map(e => {
+    const s = stocks[e.product] || 0;
+    const cls = s <= 0 ? 'badge-stock-zero' : s < 10 ? 'badge-stock-low' : 'badge-stock-ok';
+    const label = s <= 0 ? 'Rupture' : s < 10 ? `⚠ ${s}` : `${s}`;
+    const prodHL = highlight(e.product, dashSearch);
+    return `<div class="entry-card">
+      <div class="entry-top">
+        <div>
+          <div class="entry-product">${prodHL}</div>
+          <div class="entry-date">${fmtDate(e.date)}</div>
+        </div>
+        <button class="entry-del" onclick="delEntry(${e.id})">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+      <div class="entry-badges">
+        ${e.in > 0 ? `<span class="badge badge-in">↑ +${e.in}</span>` : ''}
+        ${e.out > 0 ? `<span class="badge badge-out">↓ −${e.out}</span>` : ''}
+      </div>
+      <div class="entry-stock-row">
+        <span class="entry-stock-label">Stock restant</span>
+        <span class="badge ${cls}">${label}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderStocks() {
+  const stocks = getStocks();
+  let products = state.products.filter(p =>
+    !stockSearch || p.toLowerCase().includes(stockSearch.toLowerCase())
+  );
+  if (stockSort === 'az') products.sort((a, b) => a.localeCompare(b));
+  else products.sort((a, b) => (stocks[b] || 0) - (stocks[a] || 0));
+
+  const el = document.getElementById('stocks-list');
+  const info = document.getElementById('stock-results-info');
+  const total = state.products.length;
+  info.innerHTML = stockSearch
+    ? `<span>${products.length}</span> résultat${products.length !== 1 ? 's' : ''} sur ${total} produit${total !== 1 ? 's' : ''}`
+    : `${total} produit${total !== 1 ? 's' : ''}`;
+
+  if (products.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${stockSearch ? 'Aucun résultat' : 'Aucun produit'}</div></div>`;
+    return;
+  }
+  el.innerHTML = products.map(p => {
+    const s = stocks[p] || 0;
+    const cls = s <= 0 ? 'red' : s < 10 ? 'amber' : 'green';
+    const mvts = state.entries.filter(e => e.product === p).length;
+    const nameHL = highlight(p, stockSearch);
+    return `<div class="product-row">
+      <div>
+        <div class="product-name">${nameHL}</div>
+        <div class="product-meta">${mvts} mouvement${mvts !== 1 ? 's' : ''}</div>
+      </div>
+      <div>
+        <div class="product-stock-num metric-val ${cls}">${s}</div>
+        <div class="product-stock-unit">en stock</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderProductManage() {
+  const el = document.getElementById('product-list-manage');
+  if (state.products.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = state.products.map(p => `
+    <div class="product-row">
+      <div class="product-name">${p}</div>
+      <button class="entry-del" onclick="delProduct('${p.replace(/'/g,"\\'")}')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function renderProductSelect() {
+  const sel = document.getElementById('inp-product');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    state.products.map(p => `<option value="${p}" ${p === cur ? 'selected' : ''}>${p}</option>`).join('');
+}
+
+// ─── SEARCH ──────────────────────────────────────────────
+function onDashSearch(val) {
+  dashSearch = val;
+  document.getElementById('dash-search-clear').classList.toggle('visible', val.length > 0);
+  renderEntries();
+}
+function clearDashSearch() {
+  dashSearch = '';
+  document.getElementById('dash-search').value = '';
+  document.getElementById('dash-search-clear').classList.remove('visible');
+  renderEntries();
+}
+function onStockSearch(val) {
+  stockSearch = val;
+  document.getElementById('stock-search-clear').classList.toggle('visible', val.length > 0);
+  renderStocks();
+}
+function clearStockSearch() {
+  stockSearch = '';
+  document.getElementById('stock-search').value = '';
+  document.getElementById('stock-search-clear').classList.remove('visible');
+  renderStocks();
+}
+
+// ─── DATE FILTER ─────────────────────────────────────────
+function toggleFilter() {
+  filterOpen = !filterOpen;
+  document.getElementById('filter-body').classList.toggle('open', filterOpen);
+  document.getElementById('filter-chevron').classList.toggle('open', filterOpen);
+}
+function onFilterChange() {
+  filterFrom = document.getElementById('filter-from').value;
+  filterTo = document.getElementById('filter-to').value;
+  const active = filterFrom || filterTo;
+  document.getElementById('filter-badge').style.display = active ? 'inline' : 'none';
+  const summary = document.getElementById('filter-summary');
+  if (active) {
+    const from = filterFrom ? fmtDate(filterFrom) : '…';
+    const to = filterTo ? fmtDate(filterTo) : '…';
+    const count = getFilteredEntries().length;
+    summary.style.display = 'block';
+    summary.innerHTML = `📅 Du <strong>${from}</strong> au <strong>${to}</strong> — <strong>${count}</strong> mouvement${count !== 1 ? 's' : ''}`;
+  } else {
+    summary.style.display = 'none';
+  }
+  renderEntries();
+}
+function resetFilter() {
+  filterFrom = ''; filterTo = '';
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value = '';
+  document.getElementById('filter-badge').style.display = 'none';
+  document.getElementById('filter-summary').style.display = 'none';
+  renderEntries();
+}
+
+// ─── SORT ────────────────────────────────────────────────
+function setSort(dir) {
+  sortDir = dir;
+  document.getElementById('pill-desc').classList.toggle('active', dir === 'desc');
+  document.getElementById('pill-asc').classList.toggle('active', dir === 'asc');
+  renderEntries();
+}
+function setStockSort(s) {
+  stockSort = s;
+  document.getElementById('spill-az').classList.toggle('active', s === 'az');
+  document.getElementById('spill-stock').classList.toggle('active', s === 'stock');
+  renderStocks();
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────
+function addEntry() {
+  const product = document.getElementById('inp-product').value.trim();
+  const date = document.getElementById('inp-date').value;
+  const inVal = parseInt(document.getElementById('inp-in').value) || 0;
+  const outVal = parseInt(document.getElementById('inp-out').value) || 0;
+  if (!product) { alert('Sélectionnez un produit.'); return; }
+  if (!date) { alert('Choisissez une date.'); return; }
+  state.entries.push({ id: state.nextId++, product, date, in: inVal, out: outVal });
+  save(); render();
+  document.getElementById('inp-in').value = 0;
+  document.getElementById('inp-out').value = 0;
+  document.getElementById('inp-product').value = '';
+  showPage('dashboard');
+}
+function delEntry(id) {
+  if (!confirm('Supprimer ce mouvement ?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  save(); render();
+}
+function promptNewProduct() {
+  const name = prompt('Nom du nouveau produit :');
+  if (!name || !name.trim()) return;
+  if (state.products.includes(name.trim())) { alert('Ce produit existe déjà.'); return; }
+  state.products.push(name.trim());
+  save(); render();
+}
+function delProduct(p) {
+  if (!confirm(`Supprimer "${p}" et tous ses mouvements ?`)) return;
+  state.products = state.products.filter(x => x !== p);
+  state.entries = state.entries.filter(e => e.product !== p);
+  save(); render();
+}
+
+// ─── EXPORT EXCEL (sans librairie externe) ───────────────
+
+// Construit un vrai fichier .xlsx (format Office Open XML) sans dépendance
+function buildXLSX(sheets) {
+  // sheets = [{ name, rows }]  rows = tableau de tableaux
+  const escXML = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  function colName(n) {
+    let s = '';
+    n++;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  }
+
+  const sharedStrings = [];
+  const ssMap = {};
+  function si(val) {
+    const k = String(val);
+    if (ssMap[k] === undefined) { ssMap[k] = sharedStrings.length; sharedStrings.push(k); }
+    return ssMap[k];
+  }
+
+  const sheetXMLs = sheets.map(({ name, rows }) => {
+    let xml = '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+    rows.forEach((row, ri) => {
+      xml += `<row r="${ri+1}">`;
+      row.forEach((cell, ci) => {
+        const addr = colName(ci) + (ri+1);
+        if (cell === null || cell === undefined || cell === '') { xml += `<c r="${addr}"/>`; return; }
+        if (typeof cell === 'number') {
+          xml += `<c r="${addr}" t="n"><v>${cell}</v></c>`;
+        } else {
+          xml += `<c r="${addr}" t="s"><v>${si(cell)}</v></c>`;
+        }
+      });
+      xml += '</row>';
+    });
+    xml += '</sheetData></worksheet>';
+    return { name, xml };
+  });
+
+  const ssXML = '<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + sharedStrings.length + '" uniqueCount="' + sharedStrings.length + '">' +
+    sharedStrings.map(s => `<si><t xml:space="preserve">${escXML(s)}</t></si>`).join('') + '</sst>';
+
+  const wbXML = '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+    sheetXMLs.map((s, i) => `<sheet name="${escXML(s.name)}" sheetId="${i+1}" r:id="rId${i+2}"/>`).join('') + '</sheets></workbook>';
+
+  const wbRels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' +
+    sheetXMLs.map((s, i) => `<Relationship Id="rId${i+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('') +
+    '</Relationships>';
+
+  const contentTypes = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' +
+    sheetXMLs.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
+    '</Types>';
+
+  const relsRoot = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+
+  // Zip minimal (ZIP store, pas de compression)
+  function strToBytes(str) {
+    const buf = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
+    return buf;
+  }
+  function utf8Bytes(str) {
+    return new TextEncoder().encode(str);
+  }
+  function u32le(n) { return [n & 0xff, (n>>8)&0xff, (n>>16)&0xff, (n>>24)&0xff]; }
+  function u16le(n) { return [n & 0xff, (n>>8)&0xff]; }
+
+  function crc32(buf) {
+    let c = 0xffffffff;
+    const t = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let k = i;
+      for (let j = 0; j < 8; j++) k = k & 1 ? 0xedb88320 ^ (k >>> 1) : k >>> 1;
+      t[i] = k;
+    }
+    for (let i = 0; i < buf.length; i++) c = t[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  const files = [
+    { name: '[Content_Types].xml', data: utf8Bytes(contentTypes) },
+    { name: '_rels/.rels', data: utf8Bytes(relsRoot) },
+    { name: 'xl/workbook.xml', data: utf8Bytes(wbXML) },
+    { name: 'xl/_rels/workbook.xml.rels', data: utf8Bytes(wbRels) },
+    { name: 'xl/sharedStrings.xml', data: utf8Bytes(ssXML) },
+    ...sheetXMLs.map((s, i) => ({ name: `xl/worksheets/sheet${i+1}.xml`, data: utf8Bytes(s.xml) }))
+  ];
+
+  const localHeaders = [];
+  const centralDir = [];
+  let offset = 0;
+
+  files.forEach(f => {
+    const nameBytes = strToBytes(f.name);
+    const crc = crc32(f.data);
+    const size = f.data.length;
+    const lh = [
+      0x50,0x4b,0x03,0x04, // signature
+      0x14,0x00,           // version needed
+      0x00,0x00,           // flags
+      0x00,0x00,           // compression (store)
+      0x00,0x00,0x00,0x00, // mod time/date
+      ...u32le(crc),
+      ...u32le(size),
+      ...u32le(size),
+      ...u16le(nameBytes.length),
+      0x00,0x00,           // extra field length
+      ...nameBytes
+    ];
+    localHeaders.push({ lh, data: f.data, nameBytes, crc, size, offset });
+    const cd = [
+      0x50,0x4b,0x01,0x02,
+      0x14,0x00,0x14,0x00,
+      0x00,0x00,0x00,0x00,
+      0x00,0x00,0x00,0x00,
+      ...u32le(crc),
+      ...u32le(size),
+      ...u32le(size),
+      ...u16le(nameBytes.length),
+      0x00,0x00,0x00,0x00,0x00,0x00,
+      0x00,0x00,0x00,0x00,
+      ...u32le(offset),
+      ...nameBytes
+    ];
+    centralDir.push(cd);
+    offset += lh.length + size;
+  });
+
+  const cdOffset = offset;
+  const cdSize = centralDir.reduce((s, c) => s + c.length, 0);
+  const eocd = [
+    0x50,0x4b,0x05,0x06,
+    0x00,0x00,0x00,0x00,
+    ...u16le(files.length),
+    ...u16le(files.length),
+    ...u32le(cdSize),
+    ...u32le(cdOffset),
+    0x00,0x00
+  ];
+
+  const parts = [];
+  localHeaders.forEach(e => { parts.push(new Uint8Array(e.lh)); parts.push(e.data); });
+  centralDir.forEach(c => parts.push(new Uint8Array(c)));
+  parts.push(new Uint8Array(eocd));
+
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  parts.forEach(p => { out.set(p, pos); pos += p.length; });
+  return out;
+}
+
+function downloadXLSX(sheets, filename) {
+  const bytes = buildXLSX(sheets);
+  const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportMouvements() {
+  const stocks = getStocks();
+  const filtered = getFilteredEntries().sort((a, b) =>
+    sortDir === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
+  );
+  if (filtered.length === 0) { alert('Aucun mouvement à exporter.'); return; }
+
+  const periodeFrom = filterFrom ? fmtDate(filterFrom) : null;
+  const periodeTo   = filterTo   ? fmtDate(filterTo)   : null;
+  const periode = periodeFrom || periodeTo
+    ? `Période : ${periodeFrom || '…'} → ${periodeTo || '…'}`
+    : 'Tous les mouvements';
+
+  const rows = [
+    ['RAPPORT DES MOUVEMENTS DE STOCK'],
+    [periode],
+    ['Exporté le : ' + new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })],
+    [],
+    ['Date', 'Produit', 'Entrées', 'Sorties', 'Net (Entrées - Sorties)', 'Stock restant (global)']
+  ];
+  filtered.forEach(e => {
+    const net = (e.in||0) - (e.out||0);
+    const s = stocks[e.product] || 0;
+    rows.push([
+      new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR'),
+      e.product,
+      e.in  || 0,
+      e.out || 0,
+      net,
+      s <= 0 ? 'RUPTURE' : s < 10 ? `${s} (Faible)` : String(s)
+    ]);
+  });
+  rows.push([]);
+  const tIn  = filtered.reduce((s,e) => s+(e.in ||0), 0);
+  const tOut = filtered.reduce((s,e) => s+(e.out||0), 0);
+  rows.push(['TOTAUX', '', tIn, tOut, tIn - tOut, '']);
+
+  const today  = new Date().toISOString().split('T')[0];
+  const suffix = filterFrom || filterTo ? `_${filterFrom||'debut'}_${filterTo||'fin'}` : '_complet';
+  downloadXLSX([{ name: 'Mouvements', rows }], `mouvements${suffix}_${today}.xlsx`);
+}
+
+function exportStocks() {
+  const stocks = getStocks();
+  let products = [...state.products];
+  if (stockSort === 'az') products.sort((a,b) => a.localeCompare(b));
+  else products.sort((a,b) => (stocks[b]||0) - (stocks[a]||0));
+
+  if (products.length === 0) { alert('Aucun produit à exporter.'); return; }
+
+  const rows = [
+    ['RAPPORT DE STOCK GLOBAL'],
+    ['Exporté le : ' + new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })],
+    [],
+    ['Produit', 'Stock restant', 'Total entrées', 'Total sorties', 'Nb mouvements', 'Statut']
+  ];
+  products.forEach(p => {
+    const s    = stocks[p] || 0;
+    const mvts = state.entries.filter(e => e.product === p);
+    const tIn  = mvts.reduce((sum,e) => sum+(e.in ||0), 0);
+    const tOut = mvts.reduce((sum,e) => sum+(e.out||0), 0);
+    rows.push([p, s, tIn, tOut, mvts.length, s <= 0 ? 'RUPTURE' : s < 10 ? 'Stock faible' : 'OK']);
+  });
+  rows.push([]);
+  const gTotal = products.reduce((s,p) => s+(stocks[p]||0), 0);
+  const gIn    = state.entries.reduce((s,e) => s+(e.in ||0), 0);
+  const gOut   = state.entries.reduce((s,e) => s+(e.out||0), 0);
+  rows.push(['TOTAL GÉNÉRAL', gTotal, gIn, gOut, state.entries.length, '']);
+
+  const today = new Date().toISOString().split('T')[0];
+  downloadXLSX([{ name: 'Stock global', rows }], `stock_global_${today}.xlsx`);
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── PWA ─────────────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById('install-banner').style.display = 'none'; });
+  }
+}
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(() => {}); }
+
+// ─── INIT ────────────────────────────────────────────────
+document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+render();
+</script>
+</body>
+</html>

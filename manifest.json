@@ -1,0 +1,26 @@
+{
+  "name": "StockManager",
+  "short_name": "Stock",
+  "description": "Gestion de stock quotidienne avec suivi des entrées et sorties",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230f1117'/><rect x='40' y='80' width='112' height='80' rx='8' fill='%2322c55e'/><rect x='60' y='56' width='72' height='32' rx='6' fill='%2316a34a'/><rect x='84' y='44' width='24' height='20' rx='4' fill='%2315803d'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230f1117'/><rect x='100' y='210' width='312' height='220' rx='20' fill='%2322c55e'/><rect x='156' y='146' width='200' height='88' rx='16' fill='%2316a34a'/><rect x='224' y='112' width='64' height='52' rx='10' fill='%2315803d'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "fr"
+}
